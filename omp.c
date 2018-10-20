@@ -49,5 +49,4 @@ void tri_merge(float bin1[],float bin2[]){
 }
 void tri (float b[]){
 
-
 }
