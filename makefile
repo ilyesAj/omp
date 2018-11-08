@@ -6,4 +6,3 @@ compile :omp.c
 	gcc -g -Wall -fopenmp omp.c -o omp
 run : omp
 	chmod u+x omp
-	./omp
