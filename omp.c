@@ -3,9 +3,10 @@
 #include <omp.h>
 #include <time.h>
 
-# define N 2 // nombres de tableaux
-# define K 6 // tailles des tableaux
-float* bin[N]; // tableau qui stocke tout les bin
+int N ; // nombres de tableaux
+int K ; // tailles des tableaux
+
+float** bin; // tableau qui stocke tout les bin
 void init_bin(); // genere les tableaux
 void generator(float bin[]);
 void affiche(float bin[]);
@@ -13,36 +14,73 @@ void tri_merge(float bin1[],float bin2[]);
 int calcul_gap(int a);
 int partition(float tableau[], int deb, int fin);
 void tri_rapide_bis(float tableau[],int debut,int fin);
-void tri_rapide(float tableau[],int longueur);
+void tri_rapide(float* tableau,int longueur);
 void echanger(float tab[], int i, int j);
-//void tri (float b[]);
+float maximum(float a,float b);
+float minimum(float a , float b);
+void tri_parallel (float** bloc);
+
+
 int main(int argc, char const *argv[])
 {
+	clock_t begin, end;
+	double time_spent;
+	omp_set_num_threads(5);
+	srand((unsigned int)time(NULL));
+	N=atoi(argv[1]);
+	K=atoi(argv[2]);
+	printf("Base de données d'entiers de %d x %d éléments\n",N,K );
+    printf("init\n");
+	init_bin();
+	printf("Generation du tableau de bloc \n");
+	for (int i = 0; i < N; i++)
+		generator(bin[i]);
+	
+	for (int i = 0; i < N; i++){
+		printf("affichage bin [%d] ",i );
+		affiche(bin[i]);
+	}
+	begin = clock();
+	tri_parallel(bin);
+	end = clock();
+	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	printf("///////////////////////////////////////////////////////\n");
+	printf("Le temps d'execution de affiche est %f\n",time_spent );
+	printf("///////////////////////////////////////////////////////\n");
+
+	printf("Affichage aprés le tri parallél\n");
+	for (int i = 0; i < N; ++i){
+	printf("affichage bin [%d] ",i );
+	affiche(bin[i]);
+	}
+
+	/*
 	    srand((unsigned int)time(NULL));
 
 	printf("init\n");
 	init_bin();
-	printf("generate\n");
+	printf("Generation du tableau de bloc triés \n");
 	for (int i = 0; i < N; ++i){
 		generator(bin[i]);
 		tri_rapide(bin[i],K);
 	}
-	printf("affiche\n");
 	for (int i = 0; i < N; ++i){
-		printf("affichage bin %d\n",i );
+		printf("affichage bin [%d] ",i );
 		affiche(bin[i]);
 	}
-	printf("tri_merge\n");
+	printf("Affichage aprés tri_merge\n");
 	tri_merge(bin[0],bin[1]);
-	printf("reafficher\n");
 		for (int i = 0; i < N; ++i){
-		printf("affichage bin %d\n",i );
+		printf("affichage bin [%d] ",i );
 		affiche(bin[i]);
 	}
+	*/
 	return 0;
 }
+
 void init_bin(){
-	for (int i = 0; i < N; ++i)
+	bin=(float**)malloc(N*sizeof(float*));
+	for (int i = 0; i < N; i++)
 		bin[i]=(float*)malloc(K*sizeof(float));
 }
 
@@ -53,7 +91,8 @@ void generator(float tab[]){
 }
 void affiche(float tab[]){
     for (int i = 0; i < K; ++i)
-    	printf("bin[%d]=%f\n",i,tab[i] );
+    	printf("| %f | ",tab[i] );
+    printf("\n");
 }
 void tri_merge(float bin1[],float bin2[]){
 	// la fonction ne donne pas necessairement en sortie deux sous tableaux triés !
@@ -168,3 +207,55 @@ void echanger(float tab[], int i, int j)
      tab[i]=tab[j];
      tab[j]=memoire;
      }
+float minimum(float a , float b)
+{
+	if (a>b)
+		return b ;
+	else
+		return a ;
+}
+float maximum(float a , float b)
+{
+	if (a>b)
+		return a ;
+	else
+		return b ;
+}
+void tri_parallel(float** bloc)
+{
+	int i,j,b1,b2,k ; 
+	int min , max ;
+	#pragma omp parallel for
+	for (i=0;i<N;i++)
+		tri_rapide(bloc[i],K);
+
+	for (j=0;j<N;j++)
+	{	k=1+(j%2) ; // Traitement des blocs deux à deux 
+	#pragma omp parallel for
+		for (i=0;i<N/2-1;i++)
+		{
+			b1=1+(k+2*i)%N;
+			b2=1+(K+2*i+1)%N;
+			min=minimum(b1,b2);
+			max=maximum(b1,b2) ; 
+			tri_merge(bin[min],bin[max]);
+		}
+	}
+
+
+	/*printf("Le tri en paralléle \n");
+	for (int i = 1; i <= N; ++i){
+		generator(bin[i]);
+		tri_rapide(bin[i],K);
+	}
+	for (int i = 0; i < N; ++i){
+		printf("affichage bin [%d] ",i );
+		affiche(bin[i]);
+	}
+		tri_merge(bin[0],bin[1]);
+		for (int i = 0; i < N; ++i){
+		printf("affichage bin [%d] ",i );
+		affiche(bin[i]);
+	}*/		
+
+}
