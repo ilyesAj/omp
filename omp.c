@@ -8,36 +8,40 @@
 int N ; // nombres de tableaux
 int K ; // tailles des tableaux
 
+
 float** bin; // tableau qui stocke tout les bin
-typedef struct bouts
-{
-	float* bout1;
-	float* bout2;
-} bouts ;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void verif_tri(float** bloc);
 void fusion(float tableau[],int deb1,int fin1,int fin2);
 void tri_fusion_bis(float tableau[],int deb,int fin);
 void tri_fusion(float tableau[],int longueur);
-void create_marks_csv(char *filename,int N,int K, float time );
+void create_marks_csv(char *filename,int N,int K, float time,int nb_threads );
 void init_bin(); // genere les tableaux
 void generator(float bin[]);
 void affiche(float bin[]);
 void tri_merge(float bin1[],float bin2[]);
 float maximum(float a,float b);
 float minimum(float a , float b);
-void tri_parallel (float** bloc);
+void tri_parallel (float** bloc,int nb_threads);
 
 
 int main(int argc, char const *argv[])
 {
+	int nb_threads;
 	double t1,t2;
 	double time_spent;
+	
+
 	srand((unsigned int)time(NULL));
 	N=atoi(argv[1]);
 	K=atoi(argv[2]);
 	printf("Base de données d'entiers de %d x %d éléments\n",N,K );
-    printf("init\n");
+
+	printf("Entrez le nombre de threads qui vont exécuté le tri parallél \n");
+	
+	scanf("\n%d",&nb_threads);
+
 	init_bin();
 	printf("Generation du tableau de bloc \n");
 	for (int i = 0; i < N; i++)
@@ -47,9 +51,9 @@ int main(int argc, char const *argv[])
 		printf("affichage bin [%d] ",i );
 		affiche(bin[i]);
 	}
+
 	t1=omp_get_wtime();
-	
-	tri_parallel(bin);
+	tri_parallel(bin,nb_threads);
 	t2=omp_get_wtime();
 	time_spent = (double)(t2-t1);
 	
@@ -63,7 +67,7 @@ int main(int argc, char const *argv[])
 	printf("Le temps d'execution du tri parallél est %f\n",time_spent );
 	printf("///////////////////////////////////////////////////////\n");
 	
-	create_marks_csv("lesvaleurs.csv",N,K,time_spent);
+	create_marks_csv("lesvaleurs.csv",N,K,time_spent,nb_threads);
 	
 	return 0;
 }
@@ -75,13 +79,14 @@ void init_bin(){
 }
 
 void generator(float tab[]){
-   float coef = 15.0; //coeffecient pour agrandir les floats
+   float coef = 1000; //coeffecient pour agrandir les floats
     for (int i = 0; i < K; ++i)
         tab[i]=((float)rand()/(float)(RAND_MAX))*coef ;
 }
 void affiche(float tab[]){
+	printf("\n");
     for (int i = 0; i < K; ++i)
-    	printf("| %f | ",tab[i] );
+    	printf("| %f | \n",tab[i] );
     printf("\n");
 }
 int nextGap(int gap) 
@@ -110,13 +115,45 @@ int calcul_gap(int a){
 	else{
 		resultat=(int)a/2;
 		if (a%2==1)
-			resultat++;
+			resultat++;																																																																								
 		return resultat;
 	}
 }
 
-
 void tri_merge(float *bin1, float *bin2)
+{	
+	int i,j,k;
+	i=0;j=0;k=0;
+	float* tab =(float*)malloc(2*K*sizeof(float));
+				
+	while ((i<K)&&(j<K))
+	{
+		if ((bin1[i]<=bin2[j])&&(i<K))
+		{
+			tab[k]=bin1[i];
+			k++;
+			i++;
+		}
+		else
+		if ((bin2[j]<bin1[i])&&(j<K))
+		{
+			tab[k]=bin2[j];
+			k++;
+			j++;	
+		}
+	}
+	printf("************** %d \n",k);
+	for (i=0;i<k;i++)
+	{
+		if (i<K)
+			bin1[i]=tab[i];
+		else
+			bin2[i-K]=tab[i];
+	}
+
+
+}																																																											
+/*void tri_merge(float *bin1, float *bin2)
 {
 	int i;
 	float* tab =(float*)malloc(2*K*sizeof(float));
@@ -126,13 +163,13 @@ void tri_merge(float *bin1, float *bin2)
 		else
 			tab[i]=bin2[i-K];
 
-	tri_fusion(tab,2*K);
+	//																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																							tri_fusion(tab,2*K);
 	for(i=0;i<2*K;i++)
 		if(i<K)
 			bin1[i]=tab[i];
 		else
 			bin2[i-K]=tab[i];
-}
+}*/
 
 void fusion(float tableau[],int deb1,int fin1,int fin2)
         {
@@ -140,7 +177,7 @@ void fusion(float tableau[],int deb1,int fin1,int fin2)
         int deb2=fin1+1;
         int compt1=deb1;
         int compt2=deb2;
-        int i;
+        int i;																																																													
         
         table1=malloc((fin1-deb1+1)*sizeof(float));
 
@@ -208,9 +245,9 @@ float maximum(float a , float b)
 	else
 		return b ;
 }
-void tri_parallel(float** bloc)
+void tri_parallel(float** bloc,int nb_threads)
 {
-	omp_set_num_threads(4);
+	omp_set_num_threads(nb_threads);
 	int i,j,b1,b2,k ; 
 	int min , max ;
 	#pragma omp parallel for
@@ -226,6 +263,7 @@ void tri_parallel(float** bloc)
 			b2=(1+(k+(2*i)+1))%N;
 			min=minimum(b1,b2);
 			max=maximum(b1,b2) ; 
+	
 			tri_merge(bloc[min],bloc[max]);
 			
 		}
@@ -265,19 +303,19 @@ void verif_tri(float **bloc)
 		printf("Tri parallél fonctionnel à 100/100 \n ");
 					
 }
-void create_marks_csv(char *filename,int N,int K, float time ){
+void create_marks_csv(char *filename,int N,int K, float time ,int nb_threads){
   
 FILE *fp;
 
   if( access( filename, F_OK ) != -1 ) {
 	
 	fp=fopen(filename,"a+");
-    fprintf(fp, "\n%d,%d,%f,%d,%f", N, K, time, omp_get_thread_num(),time/omp_get_num_procs());
+    fprintf(fp, "\n%d,%d,%f,%d,%f", N, K, time, nb_threads , time/omp_get_num_procs());
 
 } else {
 	    fp=fopen(filename,"a+");
-	    fprintf(fp,"N, K, time, threads,charge du programme");  
-		fprintf(fp, "\n%d,%d,%f,%d,%f", N, K, time, omp_get_thread_num(),time/omp_get_num_procs());
+	    fprintf(fp,"N, K, time, nb_threads , charge du programme");  
+		fprintf(fp, "\n%d,%d,%f,%d,%f", N, K, time, nb_threads,time/omp_get_num_procs());
 
 }
   
