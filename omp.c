@@ -210,7 +210,7 @@ float maximum(float a , float b)
 }
 void tri_parallel(float** bloc)
 {
-	omp_set_num_threads(1000);
+	omp_set_num_threads(4);
 	int i,j,b1,b2,k ; 
 	int min , max ;
 	#pragma omp parallel for
