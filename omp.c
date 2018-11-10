@@ -10,7 +10,6 @@ int K ; // tailles des tableaux
 
 
 float** bin; // tableau qui stocke tout les bin
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void verif_tri(float** bloc);
 void fusion(float tableau[],int deb1,int fin1,int fin2);
@@ -46,22 +45,24 @@ int main(int argc, char const *argv[])
 	printf("Generation du tableau de bloc \n");
 	for (int i = 0; i < N; i++)
 		generator(bin[i]);
-	
+	/*
 	for (int i = 0; i < N; i++){
 		printf("affichage bin [%d] ",i );
 		affiche(bin[i]);
 	}
-
+	*/
 	t1=omp_get_wtime();
+	printf("ICI\n");
 	tri_parallel(bin,nb_threads);
+	printf("ICI 2\n");
 	t2=omp_get_wtime();
 	time_spent = (double)(t2-t1);
-	
+	/*
 	printf("Affichage aprés le tri parallél\n");
 	for (int i = 0; i < N; ++i){
 	printf("affichage bin [%d] ",i );
 	affiche(bin[i]);
-	}
+	}*/
 	//verif_tri(bin);*/
 	printf("///////////////////////////////////////////////////////\n");
 	printf("Le temps d'execution du tri parallél est %f\n",time_spent );
@@ -126,23 +127,33 @@ void tri_merge(float *bin1, float *bin2)
 	i=0;j=0;k=0;
 	float* tab =(float*)malloc(2*K*sizeof(float));
 				
-	while ((i<K)&&(j<K))
+	for (k=0;k<2*K;k++)
 	{
-		if ((bin1[i]<=bin2[j])&&(i<K))
+		if (i>=K)
+		{
+			tab[k]=bin2[j];
+			j++;
+		}
+		else
+		if (j>=K)
 		{
 			tab[k]=bin1[i];
-			k++;
+			i++;
+		}
+		else
+		if ((bin1[i]<bin2[j])&&(i<K))
+		{
+			tab[k]=bin1[i];
 			i++;
 		}
 		else
 		if ((bin2[j]<bin1[i])&&(j<K))
 		{
 			tab[k]=bin2[j];
-			k++;
 			j++;	
 		}
+		
 	}
-	printf("************** %d \n",k);
 	for (i=0;i<k;i++)
 	{
 		if (i<K)
@@ -153,23 +164,6 @@ void tri_merge(float *bin1, float *bin2)
 
 
 }																																																											
-/*void tri_merge(float *bin1, float *bin2)
-{
-	int i;
-	float* tab =(float*)malloc(2*K*sizeof(float));
-	for(i=0;i<2*K;i++)
-		if (i<K)
-			tab[i]=bin1[i];
-		else
-			tab[i]=bin2[i-K];
-
-	//																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																							tri_fusion(tab,2*K);
-	for(i=0;i<2*K;i++)
-		if(i<K)
-			bin1[i]=tab[i];
-		else
-			bin2[i-K]=tab[i];
-}*/
 
 void fusion(float tableau[],int deb1,int fin1,int fin2)
         {
@@ -255,18 +249,21 @@ void tri_parallel(float** bloc,int nb_threads)
 		tri_fusion(bloc[i],K);
 
 	for (j=0;j<=N;j++)
-	{	k=1+(j%2) ; // Traitement des blocs deux à deux 
-	#pragma omp parallel for private(b1,b2,min,max)
-		for (i=0;i<=N/2+1;i++)
-		{
-			b1=(1+(k+(2*i)))%N;
-			b2=(1+(k+(2*i)+1))%N;
-			min=minimum(b1,b2);
-			max=maximum(b1,b2) ; 
-	
-			tri_merge(bloc[min],bloc[max]);
+	{	
+		k=1+(j%2) ; // Traitement des blocs deux à deux 
+		#pragma omp parallel for private(b1,b2,min,max)
+			for (i=0;i<=N/2+1;i++)
+			{
+				b1=(1+(k+(2*i)))%N;
+				b2=(1+(k+(2*i)+1))%N;
+				min=minimum(b1,b2);
+				max=maximum(b1,b2) ; 
+				#pragma omp critical
+				{
+				tri_merge(bloc[min],bloc[max]);
+				}
 			
-		}
+			}
 	}
 
 }
