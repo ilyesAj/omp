@@ -58,12 +58,12 @@ int main(int argc, char const *argv[])
 	t2=omp_get_wtime();
 	time_spent = (double)(t2-t1);
 	printf("FINI \n");
-	/*
+	
 	printf("Affichage aprés le tri parallél\n");
 	for (int i = 0; i < N; ++i){
 	printf("affichage bin [%d] ",i );
 	affiche(bin[i]);
-	}*/
+	}
 	printf("///////////////////////////////////////////////////////\n");
 	printf("Le temps d'execution du tri parallél est %f\n",time_spent );
 	printf("///////////////////////////////////////////////////////\n");		
@@ -90,36 +90,6 @@ void affiche(float tab[]){
     for (int i = 0; i < K; ++i)
     	printf("| %f | \n",tab[i] );
     printf("\n");
-}
-int nextGap(int gap) 
-{ 
-    if (gap <= 1) 
-        return 0; 
-    return (gap / 2) + (gap % 2); 
-} 
-
-void swap(float a, float b)
-{
-	float memoire;
-     memoire=a;
-     a=b;
-     b=memoire;
-}
-
-int calcul_gap(int a){
-	int resultat;
-	if (a==2)
-		return 1;
-	else if (a==1)
-	{
-		return 0;
-	}
-	else{
-		resultat=(int)a/2;
-		if (a%2==1)
-			resultat++;																																																																								
-		return resultat;
-	}
 }
 
 void tri_merge(float *bin1, float *bin2)
