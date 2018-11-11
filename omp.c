@@ -42,31 +42,32 @@ int main(int argc, char const *argv[])
 	scanf("\n%d",&nb_threads);
 
 	init_bin();
-	printf("Generation du tableau de bloc \n");
+	printf("Generation du tableau de bloc ");
 	for (int i = 0; i < N; i++)
 		generator(bin[i]);
+	printf(" FINI\n");
 	/*
 	for (int i = 0; i < N; i++){
 		printf("affichage bin [%d] ",i );
 		affiche(bin[i]);
 	}
 	*/
+	printf("TRI parallél");
 	t1=omp_get_wtime();
-	printf("ICI\n");
 	tri_parallel(bin,nb_threads);
-	printf("ICI 2\n");
 	t2=omp_get_wtime();
 	time_spent = (double)(t2-t1);
+	printf("FINI \n");
 	/*
 	printf("Affichage aprés le tri parallél\n");
 	for (int i = 0; i < N; ++i){
 	printf("affichage bin [%d] ",i );
 	affiche(bin[i]);
 	}*/
-	//verif_tri(bin);*/
 	printf("///////////////////////////////////////////////////////\n");
 	printf("Le temps d'execution du tri parallél est %f\n",time_spent );
-	printf("///////////////////////////////////////////////////////\n");
+	printf("///////////////////////////////////////////////////////\n");		
+	verif_tri(bin);
 	
 	create_marks_csv("lesvaleurs.csv",N,K,time_spent,nb_threads);
 	
@@ -123,44 +124,45 @@ int calcul_gap(int a){
 
 void tri_merge(float *bin1, float *bin2)
 {	
-	int i,j,k;
-	i=0;j=0;k=0;
-	float* tab =(float*)malloc(2*K*sizeof(float));
-				
-	for (k=0;k<2*K;k++)
+	float* Tab;
+	
+	Tab=(float*)malloc(sizeof(float)*2*K);
+	
+	int c_bin1=0;
+	int c_bin2=0;
+	
+	for(int i=0;i<2*K;i++)
+		{
+			if(c_bin1>=K)
+			{
+				Tab[i]=bin2[c_bin2];
+				c_bin2++;
+			}
+			else if(c_bin2>=K)
+			{
+				Tab[i]=bin1[c_bin1];
+				c_bin1++;
+			}
+			else if((bin1[c_bin1]<bin2[c_bin2]))
+			{
+				Tab[i]=bin1[c_bin1];
+				c_bin1++;
+			}
+			else if((bin1[c_bin1]>=bin2[c_bin2]))
+			{
+				Tab[i]=bin2[c_bin2];
+				c_bin2++;
+			}
+		}
+	for(int i=0;i<K;i++)
 	{
-		if (i>=K)
-		{
-			tab[k]=bin2[j];
-			j++;
-		}
-		else
-		if (j>=K)
-		{
-			tab[k]=bin1[i];
-			i++;
-		}
-		else
-		if ((bin1[i]<bin2[j])&&(i<K))
-		{
-			tab[k]=bin1[i];
-			i++;
-		}
-		else
-		if ((bin2[j]<bin1[i])&&(j<K))
-		{
-			tab[k]=bin2[j];
-			j++;	
-		}
-		
+		bin1[i]=Tab[i];
 	}
-	for (i=0;i<k;i++)
+	for(int j=K;j<2*K;j++)
 	{
-		if (i<K)
-			bin1[i]=tab[i];
-		else
-			bin2[i-K]=tab[i];
+		bin2[j-K]=Tab[j];
 	}
+
 
 
 }																																																											
@@ -244,14 +246,14 @@ void tri_parallel(float** bloc,int nb_threads)
 	omp_set_num_threads(nb_threads);
 	int i,j,b1,b2,k ; 
 	int min , max ;
-	#pragma omp parallel for
+	#pragma omp parallel for schedule (dynamic)
 	for (i=0;i<N;i++)
 		tri_fusion(bloc[i],K);
 
 	for (j=0;j<=N;j++)
 	{	
 		k=1+(j%2) ; // Traitement des blocs deux à deux 
-		#pragma omp parallel for private(b1,b2,min,max)
+		#pragma omp parallel for private(b1,b2,min,max) schedule (static)
 			for (i=0;i<=N/2+1;i++)
 			{
 				b1=(1+(k+(2*i)))%N;
